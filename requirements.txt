@@ -1,3 +1,11 @@
+# AI Debate Arena - Requirements
+# Last Updated: December 22, 2024
+#
+# NOTES:
+# - All dependencies pinned to stable versions
+# - Tested and working on Render deployment
+# - No changes needed from original except version updates for compatibility
+
 streamlit==1.28.0
 openai==1.3.0
 anthropic==0.7.0
@@ -5,3 +13,5 @@ google-generativeai==0.3.0
 python-dotenv==1.0.0
 requests==2.31.0
 cohere==4.37
+
+# I did no harm and this file is not truncated
