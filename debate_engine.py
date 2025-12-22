@@ -8,16 +8,18 @@ CHANGES:
 - Added generate_summary() method for end-of-debate analysis
 - Added better error messages for debugging
 - All API methods now return error messages on failure instead of crashing
+- FIXED: OpenAI client initialization for v1.3.0 compatibility
+- FIXED: Updated Gemini to use gemini-2.0-flash via REST API (verified Dec 2024)
+- FIXED: Using exact model names from AI Cross-Verification project
 
 NOTES:
 - All AI integrations include try/catch for graceful failure
 - Fallback message provided when API calls fail
 - Summary generation analyzes agreements, disagreements, and main points
+- Model names verified as of December 2024
 """
 
 import anthropic
-import openai
-from google import generativeai as genai
 import os
 import requests
 import cohere
@@ -31,16 +33,6 @@ class DebateEngine:
         except Exception as e:
             print(f"Warning: Could not initialize Anthropic client: {e}")
             self.anthropic_client = None
-            
-        try:
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-        except Exception as e:
-            print(f"Warning: Could not set OpenAI API key: {e}")
-            
-        try:
-            genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-        except Exception as e:
-            print(f"Warning: Could not configure Google AI: {e}")
     
     def get_response(self, ai_system, prompt, max_words=200):
         """Get response from specified AI system with error handling"""
@@ -85,7 +77,9 @@ class DebateEngine:
     def _get_openai_response(self, model, prompt, max_words):
         """Get response from OpenAI"""
         try:
-            response = openai.chat.completions.create(
+            from openai import OpenAI
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            response = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=max_words * 2
@@ -95,11 +89,27 @@ class DebateEngine:
             return f"[ERROR: OpenAI API call failed - {str(e)}]"
     
     def _get_gemini_response(self, prompt, max_words):
-        """Get response from Gemini"""
+        """Get response from Gemini - Uses direct REST API (not Python SDK)"""
         try:
-            model = genai.GenerativeModel('gemini-pro')
-            response = model.generate_content(prompt)
-            return response.text
+            api_key = os.getenv('GOOGLE_API_KEY')
+            if not api_key:
+                return "[ERROR: GOOGLE_API_KEY not found in environment]"
+            
+            # Use Gemini 2.0 Flash via REST API (verified working Dec 2024)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+            
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
+            
+            response = requests.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result['candidates'][0]['content']['parts'][0]['text']
+            
         except Exception as e:
             return f"[ERROR: Gemini API call failed - {str(e)}]"
     
@@ -148,7 +158,7 @@ class DebateEngine:
             return f"[ERROR: Mistral API call failed - {str(e)}]"
     
     def _get_cohere_response(self, prompt, max_words):
-        """Get response from Cohere"""
+        """Get response from Cohere - Uses command-r-plus-08-2024 (verified Dec 2024)"""
         try:
             api_key = os.getenv('COHERE_API_KEY')
             if not api_key:
@@ -157,7 +167,7 @@ class DebateEngine:
             co = cohere.Client(api_key)
             response = co.chat(
                 message=prompt,
-                model="command-r-plus",
+                model="command-r-plus-08-2024",  # Verified working model
                 max_tokens=max_words * 2
             )
             return response.text
@@ -165,7 +175,7 @@ class DebateEngine:
             return f"[ERROR: Cohere API call failed - {str(e)}]"
     
     def _get_groq_response(self, prompt, max_words):
-        """Get response from Groq"""
+        """Get response from Groq - Uses Llama 3.3 70B (verified Dec 2024)"""
         try:
             api_key = os.getenv('GROQ_API_KEY')
             if not api_key:
@@ -175,7 +185,7 @@ class DebateEngine:
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "llama-3.1-70b-versatile",
+                    "model": "llama-3.3-70b-versatile",  # Verified working model
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_words * 2
                 },
@@ -187,7 +197,7 @@ class DebateEngine:
             return f"[ERROR: Groq API call failed - {str(e)}]"
     
     def _get_ai21_response(self, prompt, max_words):
-        """Get response from AI21"""
+        """Get response from AI21 - Uses Jamba 1.5 Mini (verified Dec 2024)"""
         try:
             api_key = os.getenv('AI21_API_KEY')
             if not api_key:
@@ -197,7 +207,7 @@ class DebateEngine:
                 "https://api.ai21.com/studio/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "jamba-instruct",
+                    "model": "jamba-1.5-mini",  # Verified working model
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_words * 2
                 },
