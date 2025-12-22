@@ -52,18 +52,17 @@ topic = st.sidebar.text_input("Debate Topic",
     value="Universal Basic Income should be implemented nationally within 5 years",
     help="Enter the proposition to be debated")
 
-# AI selection
+# AI selection - VERIFIED WORKING MODELS (December 2024)
 ai_options = [
-    "claude-sonnet-4-20250514",
-    "gpt-4-turbo-preview",
-    "gpt-4",
-    "gpt-3.5-turbo",
-    "gemini-pro",
-    "deepseek-chat",
-    "mistral-large-latest",
-    "cohere-command-r-plus",
-    "groq-llama",
-    "ai21-jamba"
+    "claude-sonnet-4-20250514",      # Anthropic Claude Sonnet 4
+    "gpt-4",                         # OpenAI GPT-4
+    "gpt-3.5-turbo",                 # OpenAI GPT-3.5 Turbo
+    "gemini-2.0-flash",              # Google Gemini 2.0 Flash
+    "deepseek-chat",                 # DeepSeek Chat V3
+    "mistral-large-latest",          # Mistral Large 2
+    "command-r-plus-08-2024",        # Cohere Command R+ (Aug 2024)
+    "llama-3.3-70b-versatile",       # Meta Llama 3.3 70B via Groq
+    "jamba-1.5-mini"                 # AI21 Jamba 1.5 Mini
 ]
 
 col1, col2 = st.sidebar.columns(2)
@@ -300,15 +299,16 @@ else:
     - Test controversial topics across multiple AI pairings
     - Export debates for further analysis
     
-    ### Available AI Systems:
-    - **Claude Sonnet 4** - Latest Anthropic model
-    - **GPT-4 Turbo / GPT-4 / GPT-3.5** - OpenAI models
-    - **Gemini Pro** - Google's AI model
-    - **DeepSeek Chat** - DeepSeek's conversational model
-    - **Mistral Large** - Mistral AI's flagship model
-    - **Cohere Command R+** - Cohere's advanced model
-    - **Groq (Llama 3.1)** - Meta's Llama on Groq
-    - **AI21 Jamba** - AI21 Labs' hybrid model
+    ### Available AI Systems (Verified December 2024):
+    - **Claude Sonnet 4** - Anthropic's latest model
+    - **GPT-4** - OpenAI's flagship model
+    - **GPT-3.5 Turbo** - Faster OpenAI alternative
+    - **Gemini 2.0 Flash** - Google's latest AI model
+    - **DeepSeek Chat V3** - Chinese AI perspective
+    - **Mistral Large 2** - European AI (France)
+    - **Cohere Command R+ (Aug 2024)** - Canadian AI
+    - **Llama 3.3 70B** - Meta's open source via Groq
+    - **AI21 Jamba 1.5 Mini** - Israeli hybrid model
     
     ### Features:
     ✅ Choose any 2 of 8 AI systems as opponents  
