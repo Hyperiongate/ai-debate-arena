@@ -2,6 +2,8 @@ import anthropic
 import openai
 from google import generativeai as genai
 import os
+import requests
+import cohere
 
 class DebateEngine:
     def __init__(self):
@@ -18,6 +20,16 @@ class DebateEngine:
             return self._get_openai_response(ai_system, prompt, max_words)
         elif ai_system.startswith("gemini"):
             return self._get_gemini_response(prompt, max_words)
+        elif ai_system.startswith("deepseek"):
+            return self._get_deepseek_response(prompt, max_words)
+        elif ai_system.startswith("mistral"):
+            return self._get_mistral_response(prompt, max_words)
+        elif ai_system.startswith("cohere"):
+            return self._get_cohere_response(prompt, max_words)
+        elif ai_system.startswith("groq"):
+            return self._get_groq_response(prompt, max_words)
+        elif ai_system.startswith("ai21"):
+            return self._get_ai21_response(prompt, max_words)
         else:
             return "AI system not supported"
     
@@ -44,6 +56,68 @@ class DebateEngine:
         model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(prompt)
         return response.text
+    
+    def _get_deepseek_response(self, prompt, max_words):
+        """Get response from DeepSeek"""
+        response = requests.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('DEEPSEEK_API_KEY')}"},
+            json={
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_words * 2
+            }
+        )
+        return response.json()['choices'][0]['message']['content']
+    
+    def _get_mistral_response(self, prompt, max_words):
+        """Get response from Mistral"""
+        response = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('MISTRAL_API_KEY')}"},
+            json={
+                "model": "mistral-large-latest",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_words * 2
+            }
+        )
+        return response.json()['choices'][0]['message']['content']
+    
+    def _get_cohere_response(self, prompt, max_words):
+        """Get response from Cohere"""
+        co = cohere.Client(os.getenv('COHERE_API_KEY'))
+        response = co.chat(
+            message=prompt,
+            model="command-r-plus",
+            max_tokens=max_words * 2
+        )
+        return response.text
+    
+    def _get_groq_response(self, prompt, max_words):
+        """Get response from Groq"""
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}"},
+            json={
+                "model": "llama-3.1-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_words * 2
+            }
+        )
+        return response.json()['choices'][0]['message']['content']
+    
+    def _get_ai21_response(self, prompt, max_words):
+        """Get response from AI21"""
+        response = requests.post(
+            "https://api.ai21.com/studio/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.getenv('AI21_API_KEY')}"},
+            json={
+                "model": "jamba-instruct",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_words * 2
+            }
+        )
+        return response.json()['choices'][0]['message']['content']
 
     def run_debate(self, topic, ai_pro, ai_con, rounds, word_limit, mode):
         """Run a complete debate"""
