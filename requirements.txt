@@ -1,16 +1,17 @@
 # AI Debate Arena - Requirements
 # Last Updated: December 23, 2024
 #
-# NOTES:
+# NOTES (December 23, 2024):
+# - No changes needed - requirements file already correct
 # - Fixed httpx version conflict with openai and anthropic libraries
 # - openai 1.3.0 and anthropic 0.39.0 both work with httpx 0.27.2
 # - Using REST API for Gemini (no google-generativeai package needed)
 # - Model names verified as of December 2024
-
+#
 streamlit==1.28.0
 openai==1.3.0
-httpx==0.27.2  # CRITICAL: Pin to 0.27.2 to avoid 'proxies' error
-anthropic==0.39.0  # Updated from 0.7.0 - compatible with httpx 0.27.2
+httpx==0.27.2
+anthropic==0.39.0
 python-dotenv==1.0.0
 requests==2.31.0
 cohere==4.37
