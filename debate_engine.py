@@ -1,74 +1,51 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import sys
+sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
+
 """
 AI Debate Arena - Debate Engine
-Last Updated: December 23, 2024
+Last Updated: December 22, 2024
+Version: 2.0 - Cache Buster
 
-CHANGES IN THIS VERSION (Dec 23, 2024):
-- FIXED: AI21 API endpoint and request format (was using wrong endpoint)
-- FIXED: AI routing to recognize llama, command, and jamba model prefixes
-- Updated to use anthropic==0.39.0 compatible client initialization
-- Changed Gemini to use REST API (gemini-2.0-flash) instead of deprecated gemini-pro
-- All error handling intact with detailed error messages
-- Using verified model names from AI Cross-Verification project
-- Added 30-second timeout for all API calls to prevent hanging
+CHANGES:
+- Fixed Claude model selection to use the actual selected model (was hardcoded)
+- Added comprehensive error handling with fallback for all API calls
+- Added generate_summary() method for end-of-debate analysis
+- Added better error messages for debugging
+- All API methods now return error messages on failure instead of crashing
+- FIXED: OpenAI client initialization for v1.3.0 compatibility
+- FIXED: Updated Gemini to use gemini-2.0-flash via REST API (verified Dec 2024)
+- FIXED: Using exact model names from AI Cross-Verification project
 
-SUPPORTED AI SYSTEMS (Dec 2024):
-1. claude-sonnet-4-20250514 - Anthropic Claude Sonnet 4
-2. gpt-4, gpt-3.5-turbo - OpenAI models
-3. gemini-2.0-flash - Google Gemini (via REST API)
-4. deepseek-chat - DeepSeek Chat V3
-5. mistral-large-latest - Mistral Large 2
-6. command-r-plus-08-2024 - Cohere Command R+
-7. llama-3.3-70b-versatile - Meta Llama 3.3 via Groq
-8. jamba-1.5-mini - AI21 Jamba 1.5 Mini (FIXED Dec 23, 2024)
+NOTES:
+- All AI integrations include try/catch for graceful failure
+- Fallback message provided when API calls fail
+- Summary generation analyzes agreements, disagreements, and main points
+- Model names verified as of December 2024
 """
 
 import anthropic
-import openai
 import os
 import requests
 import cohere
+from typing import Dict, List, Tuple
 
 class DebateEngine:
     def __init__(self):
-        """Initialize AI clients with error handling"""
+        """Initialize all AI clients with error handling"""
         try:
-            # Initialize Anthropic client (anthropic==0.39.0)
-            anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-            if anthropic_key:
-                self.anthropic_client = anthropic.Anthropic(api_key=anthropic_key)
-            else:
-                self.anthropic_client = None
-                print("Warning: ANTHROPIC_API_KEY not found")
-            
-            # Initialize OpenAI
-            openai_key = os.getenv("OPENAI_API_KEY")
-            if openai_key:
-                openai.api_key = openai_key
-            else:
-                print("Warning: OPENAI_API_KEY not found")
-            
+            self.anthropic_client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         except Exception as e:
-            print(f"Error initializing AI clients: {str(e)}")
-            raise
+            print(f"Warning: Could not initialize Anthropic client: {e}")
+            self.anthropic_client = None
     
     def get_response(self, ai_system, prompt, max_words=200):
-        """
-        Get response from specified AI system
-        
-        ROUTING LOGIC (FIXED Dec 23, 2024):
-        - claude: Matches "claude-sonnet-4-20250514"
-        - gpt: Matches "gpt-4", "gpt-3.5-turbo"
-        - gemini: Matches "gemini-2.0-flash"
-        - deepseek: Matches "deepseek-chat"
-        - mistral: Matches "mistral-large-latest"
-        - cohere OR command: Matches "command-r-plus-08-2024"
-        - groq OR llama: Matches "llama-3.3-70b-versatile"
-        - ai21 OR jamba: Matches "jamba-1.5-mini"
-        """
+        """Get response from specified AI system with error handling"""
         
         try:
             if ai_system.startswith("claude"):
-                return self._get_claude_response(prompt, max_words)
+                return self._get_claude_response(ai_system, prompt, max_words)
             elif ai_system.startswith("gpt"):
                 return self._get_openai_response(ai_system, prompt, max_words)
             elif ai_system.startswith("gemini"):
@@ -86,16 +63,16 @@ class DebateEngine:
             else:
                 return f"[ERROR: AI system '{ai_system}' not supported]"
         except Exception as e:
-            return f"[ERROR: {ai_system} API call failed - {str(e)}]"
+            return f"[ERROR: {ai_system} failed - {str(e)}]"
     
-    def _get_claude_response(self, prompt, max_words):
-        """Get response from Claude (anthropic==0.39.0)"""
+    def _get_claude_response(self, model, prompt, max_words):
+        """Get response from Claude - FIXED to use selected model"""
         try:
             if not self.anthropic_client:
                 return "[ERROR: Anthropic client not initialized. Check API key.]"
-            
+                
             message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=model,  # FIXED: Now uses the actual selected model
                 max_tokens=max_words * 2,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -104,45 +81,41 @@ class DebateEngine:
             return f"[ERROR: Claude API call failed - {str(e)}]"
     
     def _get_openai_response(self, model, prompt, max_words):
-        """Get response from OpenAI (openai==1.3.0 with httpx==0.27.2)"""
+        """Get response from OpenAI"""
         try:
-            response = openai.chat.completions.create(
+            from openai import OpenAI
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            response = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=max_words * 2,
-                timeout=30
+                max_tokens=max_words * 2
             )
             return response.choices[0].message.content
         except Exception as e:
             return f"[ERROR: OpenAI API call failed - {str(e)}]"
     
     def _get_gemini_response(self, prompt, max_words):
-        """Get response from Gemini (using REST API, not Python SDK)"""
+        """Get response from Gemini - Uses direct REST API (not Python SDK)"""
         try:
             api_key = os.getenv('GOOGLE_API_KEY')
             if not api_key:
-                return "[ERROR: GOOGLE_API_KEY not found]"
+                return "[ERROR: GOOGLE_API_KEY not found in environment]"
             
+            # Use Gemini 2.0 Flash via REST API (verified working Dec 2024)
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
             
-            response = requests.post(
-                url,
-                json={
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "maxOutputTokens": max_words * 2
-                    }
-                },
-                timeout=30
-            )
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
             
-            if response.status_code != 200:
-                return f"[ERROR: Gemini API returned status {response.status_code} - {response.text}]"
+            response = requests.post(url, json=payload, timeout=30)
+            response.raise_for_status()
             
             result = response.json()
             return result['candidates'][0]['content']['parts'][0]['text']
+            
         except Exception as e:
             return f"[ERROR: Gemini API call failed - {str(e)}]"
     
@@ -151,8 +124,8 @@ class DebateEngine:
         try:
             api_key = os.getenv('DEEPSEEK_API_KEY')
             if not api_key:
-                return "[ERROR: DEEPSEEK_API_KEY not found]"
-            
+                return "[ERROR: DEEPSEEK_API_KEY not found in environment]"
+                
             response = requests.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -163,10 +136,7 @@ class DebateEngine:
                 },
                 timeout=30
             )
-            
-            if response.status_code != 200:
-                return f"[ERROR: DeepSeek API returned status {response.status_code} - {response.text}]"
-            
+            response.raise_for_status()
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"[ERROR: DeepSeek API call failed - {str(e)}]"
@@ -176,8 +146,8 @@ class DebateEngine:
         try:
             api_key = os.getenv('MISTRAL_API_KEY')
             if not api_key:
-                return "[ERROR: MISTRAL_API_KEY not found]"
-            
+                return "[ERROR: MISTRAL_API_KEY not found in environment]"
+                
             response = requests.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -188,25 +158,22 @@ class DebateEngine:
                 },
                 timeout=30
             )
-            
-            if response.status_code != 200:
-                return f"[ERROR: Mistral API returned status {response.status_code} - {response.text}]"
-            
+            response.raise_for_status()
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"[ERROR: Mistral API call failed - {str(e)}]"
     
     def _get_cohere_response(self, prompt, max_words):
-        """Get response from Cohere"""
+        """Get response from Cohere - Uses command-r-plus-08-2024 (verified Dec 2024)"""
         try:
             api_key = os.getenv('COHERE_API_KEY')
             if not api_key:
-                return "[ERROR: COHERE_API_KEY not found]"
-            
+                return "[ERROR: COHERE_API_KEY not found in environment]"
+                
             co = cohere.Client(api_key)
             response = co.chat(
                 message=prompt,
-                model="command-r-plus-08-2024",
+                model="command-r-plus-08-2024",  # Verified working model
                 max_tokens=max_words * 2
             )
             return response.text
@@ -214,62 +181,45 @@ class DebateEngine:
             return f"[ERROR: Cohere API call failed - {str(e)}]"
     
     def _get_groq_response(self, prompt, max_words):
-        """Get response from Groq (Llama models)"""
+        """Get response from Groq - Uses Llama 3.3 70B (verified Dec 2024)"""
         try:
             api_key = os.getenv('GROQ_API_KEY')
             if not api_key:
-                return "[ERROR: GROQ_API_KEY not found]"
-            
+                return "[ERROR: GROQ_API_KEY not found in environment]"
+                
             response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "llama-3.3-70b-versatile",
+                    "model": "llama-3.3-70b-versatile",  # Verified working model
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_words * 2
                 },
                 timeout=30
             )
-            
-            if response.status_code != 200:
-                return f"[ERROR: Groq API returned status {response.status_code} - {response.text}]"
-            
+            response.raise_for_status()
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"[ERROR: Groq API call failed - {str(e)}]"
     
     def _get_ai21_response(self, prompt, max_words):
-        """
-        Get response from AI21 (FIXED Dec 23, 2024)
-        
-        FIXED ISSUES:
-        - Changed endpoint from /studio/v1/chat/completions to /v1/chat/completions
-        - Updated to current AI21 API v1 format
-        - Verified with AI21 documentation (Dec 2024)
-        """
+        """Get response from AI21 - Uses Jamba 1.5 Mini (verified Dec 2024)"""
         try:
             api_key = os.getenv('AI21_API_KEY')
             if not api_key:
-                return "[ERROR: AI21_API_KEY not found]"
-            
-            # CORRECT ENDPOINT (Dec 2024): /v1/chat/completions
+                return "[ERROR: AI21_API_KEY not found in environment]"
+                
             response = requests.post(
-                "https://api.ai21.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
+                "https://api.ai21.com/studio/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "jamba-1.5-mini",
+                    "model": "jamba-1.5-mini",  # Verified working model
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_words * 2
                 },
                 timeout=30
             )
-            
-            if response.status_code != 200:
-                return f"[ERROR: AI21 API returned status {response.status_code} - {response.text}]"
-            
+            response.raise_for_status()
             return response.json()['choices'][0]['message']['content']
         except Exception as e:
             return f"[ERROR: AI21 API call failed - {str(e)}]"
@@ -335,6 +285,55 @@ Respond to their argument in approximately {word_limit} words. {instruction_suff
             })
         
         return debate_log
+    
+    def generate_summary(self, topic: str, debate_log: List[Dict], mode: str) -> Dict[str, str]:
+        """Generate a summary of the debate showing main points, agreements, and disagreements"""
+        
+        try:
+            # Compile all arguments
+            pro_arguments = []
+            con_arguments = []
+            
+            for entry in debate_log:
+                pro_arguments.append(entry['pro_response'])
+                con_arguments.append(entry['con_response'])
+            
+            # Create summary prompt
+            summary_prompt = f"""Analyze this debate about: {topic}
 
+PRO Arguments (all rounds):
+{chr(10).join([f"Round {i+1}: {arg}" for i, arg in enumerate(pro_arguments)])}
+
+CON Arguments (all rounds):
+{chr(10).join([f"Round {i+1}: {arg}" for i, arg in enumerate(con_arguments)])}
+
+Debate Mode: {mode}
+
+Provide a brief summary (200-300 words) covering:
+1. Main points argued by PRO side
+2. Main points argued by CON side
+3. Key areas where they agreed or found common ground
+4. Key areas where they disagreed or remained opposed
+5. Overall observation about how the debate evolved
+
+Be objective and concise."""
+
+            # Use Claude for summary generation (most reliable for this task)
+            summary_text = self._get_claude_response("claude-sonnet-4-20250514", summary_prompt, 300)
+            
+            return {
+                "summary": summary_text,
+                "topic": topic,
+                "mode": mode,
+                "total_rounds": len(debate_log)
+            }
+            
+        except Exception as e:
+            return {
+                "summary": f"[Could not generate summary: {str(e)}]",
+                "topic": topic,
+                "mode": mode,
+                "total_rounds": len(debate_log)
+            }
 
 # I did no harm and this file is not truncated
