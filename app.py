@@ -1,25 +1,29 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 23, 2024
-Version: 3.1 - Bug Fix: Judge Error Handling
+Version: 4.0 - Audio Generation Feature
 
-CHANGES IN THIS VERSION (December 23, 2024 - Version 3.1):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.0):
+- ADDED: Audio generation using Google Cloud Text-to-Speech
+- Generates MP3 audio of entire debate with 3 distinct voices
+- PRO debater: Male voice (en-US-Neural2-D)
+- CON debater: Female voice (en-US-Neural2-E)  
+- Judge: Authoritative male voice (en-US-Neural2-J)
+- Optional "Generate Audio" button appears after debate completes
+- Audio includes: Round announcements, all arguments, summary, and judging
+- Download audio as MP3 file
+- Uses same GOOGLE_API_KEY as Gemini (no extra API key needed)
+
+CHANGES IN VERSION 3.1 (December 23, 2024):
 - FIXED: TypeError when judge scoring fails - proper type checking for judging object
 - Changed from: if judging and "scores" in judging
 - To: if judging and isinstance(judging, dict) and "scores" in judging
-- This prevents trying to call .get() on string error messages
-- Bug occurred when judge API failed but export functions expected dict
 
 CHANGES IN VERSION 3.0 (December 23, 2024):
 - ADDED: Judge AI selection with optional scoring system
 - ADDED: Post-debate scoring across 6 categories (0-10 scale each)
 - ADDED: Visual score comparison display (PRO vs CON)
 - ADDED: Judge's detailed commentary and verdict
-- ADDED: Judging results integrated into all export formats (CSV, JSON, TXT)
-- ADDED: Validation for judge AI API key
-- ADDED: Error handling for judge API failures
-- Judge can be same AI as debaters (useful for research)
-- Judge scoring is optional (checkbox control)
 
 SCORING CATEGORIES:
 1. Argument Strength - Logic and coherence of arguments
@@ -40,9 +44,9 @@ PREVIOUS FEATURES (Preserved):
 
 NOTES:
 - All features working as requested
-- Judge scoring appears after debate summary
-- Export buttons include judging results when enabled
-- Proper error handling prevents crashes when judge fails
+- Audio generation is optional (separate button)
+- Google Cloud TTS has 1 million chars/month free tier
+- Audio quality is very good (Neural2 voices)
 - No harm done to existing functionality
 """
 
@@ -99,7 +103,7 @@ word_limit = st.sidebar.slider("Words per Turn", min_value=100, max_value=500, v
 # Mode selection
 mode = st.sidebar.radio("Debate Mode", ["Adversarial", "Truth-Seeking"])
 
-# Judge AI selection (NEW)
+# Judge AI selection
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎯 Judge Scoring")
 enable_judging = st.sidebar.checkbox("Enable Judge Scoring", value=True, 
@@ -110,6 +114,15 @@ if enable_judging:
     judge_ai = st.sidebar.selectbox("Judge AI", ai_options, index=0,
         help="Select which AI system will judge the debate. Can be same as debaters.")
     st.sidebar.info("💡 The judge will score both debaters on: Argument Strength, Evidence Quality, Counterpoints, Good Faith, Factual Accuracy, and Rhetorical Skill")
+
+# Audio generation option (NEW)
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🎧 Audio Generation")
+enable_audio = st.sidebar.checkbox("Enable Audio Generation", value=True,
+    help="Generate MP3 audio of the debate with different voices for PRO, CON, and Judge")
+
+if enable_audio:
+    st.sidebar.info("🎙️ Audio will use 3 distinct Google TTS voices")
 
 # Helper function to create export files with judging
 def create_csv_export(debate_log, topic, mode, summary=None, judging=None):
@@ -131,7 +144,7 @@ def create_csv_export(debate_log, topic, mode, summary=None, judging=None):
         writer.writerow([entry['round'], "PRO", entry['pro_ai'], entry['pro_response']])
         writer.writerow([entry['round'], "CON", entry['con_ai'], entry['con_response']])
     
-    # Add judging results if available - FIXED: Check if judging is a dict
+    # Add judging results if available
     if judging and isinstance(judging, dict) and "scores" in judging:
         writer.writerow([])
         writer.writerow(["JUDGE SCORING"])
@@ -168,7 +181,6 @@ def create_json_export(debate_log, topic, mode, summary=None, judging=None):
         "summary": summary
     }
     
-    # FIXED: Only add judging if it's a valid dict
     if judging and isinstance(judging, dict):
         export_data["judging"] = judging
     
@@ -207,7 +219,6 @@ def create_txt_export(debate_log, topic, mode, summary=None, judging=None):
         output.append("=" * 80)
         output.append("")
     
-    # FIXED: Check if judging is a dict before accessing it
     if judging and isinstance(judging, dict) and "scores" in judging:
         output.append("JUDGE SCORING")
         output.append("=" * 80)
@@ -271,6 +282,10 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
             if judge_ai.startswith(prefix) and not os.getenv(key_name):
                 missing_keys.append(key_name)
     
+    # Check for Google API key if audio is enabled
+    if enable_audio and not os.getenv("GOOGLE_API_KEY"):
+        missing_keys.append("GOOGLE_API_KEY")
+    
     if missing_keys:
         st.error(f"⚠️ Missing API keys: {', '.join(set(missing_keys))}")
         st.info("Please add the missing API keys to your environment variables on Render.")
@@ -304,7 +319,6 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 with st.spinner(f"Judge ({judge_ai}) is scoring the debate..."):
                     judging = engine.judge_debate(topic, debate_log, mode, judge_ai, ai_pro, ai_con)
                     
-                    # FIXED: Check if judging is a dict before checking for errors
                     if judging and isinstance(judging, dict) and "scores" in judging:
                         st.success(f"✅ Judge scoring complete!")
                     else:
@@ -318,7 +332,7 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
             
             # Export buttons
             st.markdown("### 📥 Export Debate")
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
                 csv_data = create_csv_export(debate_log, topic, mode, summary, judging)
@@ -347,6 +361,27 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                     mime="text/plain"
                 )
             
+            with col4:
+                # Audio generation button (NEW)
+                if enable_audio and not has_errors:
+                    if st.button("🎧 Generate Audio", type="secondary"):
+                        with st.spinner("Generating audio with Google TTS..."):
+                            try:
+                                audio_data = engine.generate_audio(topic, debate_log, mode, summary, judging, ai_pro, ai_con)
+                                
+                                if audio_data and not isinstance(audio_data, str):
+                                    st.download_button(
+                                        label="🔊 Download MP3",
+                                        data=audio_data,
+                                        file_name=f"debate_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3",
+                                        mime="audio/mpeg"
+                                    )
+                                    st.success("✅ Audio generated successfully!")
+                                else:
+                                    st.error(f"❌ Audio generation failed: {audio_data}")
+                            except Exception as e:
+                                st.error(f"❌ Audio generation error: {str(e)}")
+            
             st.markdown("---")
             
             # Display each round
@@ -358,7 +393,6 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 with col1:
                     st.markdown(f"**🟢 PRO ({entry['pro_ai']})**")
                     
-                    # Check for errors
                     if "[ERROR:" in entry['pro_response']:
                         st.error(entry['pro_response'])
                     else:
@@ -368,7 +402,6 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 with col2:
                     st.markdown(f"**🔴 CON ({entry['con_ai']})**")
                     
-                    # Check for errors
                     if "[ERROR:" in entry['con_response']:
                         st.error(entry['con_response'])
                     else:
@@ -386,7 +419,7 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
             else:
                 st.markdown(summary['summary'])
             
-            # Display judge scoring if available - FIXED: Proper type checking
+            # Display judge scoring if available
             if judging and isinstance(judging, dict) and "scores" in judging:
                 st.markdown("---")
                 st.markdown("## 🎯 Judge Scoring")
@@ -398,7 +431,6 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 # Create score comparison table
                 st.markdown("### Score Breakdown (0-10 scale)")
                 
-                # Display scores in a nice table format
                 score_data = {
                     "Category": [
                         "Argument Strength",
@@ -440,7 +472,6 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 st.info(judging['verdict'])
                 
             elif judging and isinstance(judging, str) and "[ERROR:" in judging:
-                # FIXED: Display error if judging is a string (error message)
                 st.markdown("---")
                 st.markdown("## 🎯 Judge Scoring")
                 st.error(f"Judge scoring failed: {judging}")
@@ -465,16 +496,18 @@ else:
        - **Adversarial**: AIs try to win the debate
        - **Truth-Seeking**: AIs collaborate to find the best answer
     5. **Enable judge scoring** (Optional) - Have an AI judge score the debate
-    6. **Run the debate** - Watch the arguments unfold round by round
-    7. **Export results** - Download debate transcripts with scores in CSV, JSON, or TXT format
+    6. **Enable audio generation** (Optional) - Generate MP3 audio of the debate
+    7. **Run the debate** - Watch the arguments unfold round by round
+    8. **Generate audio** - Click button to create audio with 3 distinct voices
+    9. **Export results** - Download transcripts and audio
     
     ### Research Applications:
     - Compare how different AI systems argue the same position
     - Observe convergence patterns in truth-seeking mode
     - Analyze argument quality evolution across rounds
     - Test controversial topics across multiple AI pairings
-    - **NEW:** Compare judge scoring across different AI judges
-    - **NEW:** Analyze which debating strategies score highest
+    - Compare judge scoring across different AI judges
+    - **NEW:** Create audio debates for presentations or podcasts
     - Export debates for further analysis
     
     ### Available AI Systems (Verified December 2024):
@@ -487,6 +520,14 @@ else:
     - **Cohere Command R+ (Aug 2024)** - Canadian AI
     - **Llama 3.3 70B** - Meta's open source via Groq
     - **AI21 Jamba 1.5 Mini** - Israeli hybrid model
+    
+    ### Audio Generation:
+    - **PRO Voice**: Male (en-US-Neural2-D)
+    - **CON Voice**: Female (en-US-Neural2-E)
+    - **Judge Voice**: Authoritative Male (en-US-Neural2-J)
+    - **Format**: MP3 audio file
+    - **Quality**: High-quality Google Neural2 voices
+    - **Free Tier**: 1 million characters/month
     
     ### Judge Scoring Categories:
     Each debate is scored on a 0-10 scale across 6 categories:
@@ -503,9 +544,10 @@ else:
     ✅ Set word limit per response (100-500)  
     ✅ Custom debate topics  
     ✅ Two debate modes: Adversarial vs Truth-Seeking  
-    ✅ **NEW:** Optional AI judge scoring across 6 categories  
-    ✅ **NEW:** Detailed judge commentary and verdict  
-    ✅ Export debates with scores in multiple formats (CSV, JSON, TXT)  
+    ✅ Optional AI judge scoring across 6 categories  
+    ✅ Detailed judge commentary and verdict  
+    ✅ **NEW:** Generate MP3 audio with 3 distinct voices  
+    ✅ Export debates in multiple formats (CSV, JSON, TXT, MP3)  
     ✅ Automatic summary of main points, agreements, and disagreements  
     ✅ Error handling with fallback messages  
     """)
