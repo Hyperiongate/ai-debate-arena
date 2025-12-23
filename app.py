@@ -1,9 +1,15 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 23, 2024
-Version: 4.0 - Audio Generation Feature
+Version: 4.1 - AI21 SDK Fix + Audio Generation
 
-CHANGES IN THIS VERSION (December 23, 2024 - Version 4.0):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.1):
+- FIXED: AI21 now uses Python SDK instead of REST API
+- AI21 Jamba models now work properly via ai21 package
+- This fixes the "404 Not Found" error with AI21
+- All 8 AI systems now functional
+
+CHANGES IN VERSION 4.0 (December 23, 2024):
 - ADDED: Audio generation using Google Cloud Text-to-Speech
 - Generates MP3 audio of entire debate with 3 distinct voices
 - PRO debater: Male voice (en-US-Neural2-D)
@@ -47,6 +53,7 @@ NOTES:
 - Audio generation is optional (separate button)
 - Google Cloud TTS has 1 million chars/month free tier
 - Audio quality is very good (Neural2 voices)
+- AI21 requires Python SDK (not REST API) as of December 2024
 - No harm done to existing functionality
 """
 
@@ -87,7 +94,7 @@ ai_options = [
     "mistral-large-latest",          # Mistral Large 2
     "command-r-plus-08-2024",        # Cohere Command R+ (Aug 2024)
     "llama-3.3-70b-versatile",       # Meta Llama 3.3 70B via Groq
-    "jamba-1.5-mini"                 # AI21 Jamba 1.5 Mini
+    "jamba-1.5-mini"                 # AI21 Jamba 1.5 Mini (via Python SDK)
 ]
 
 col1, col2 = st.sidebar.columns(2)
