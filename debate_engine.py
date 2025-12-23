@@ -1,6 +1,7 @@
 """
 AI Debate Arena - Debate Engine
 Last Updated: December 22, 2024
+Version: 2.0 - Cache Buster
 
 CHANGES:
 - Fixed Claude model selection to use the actual selected model (was hardcoded)
