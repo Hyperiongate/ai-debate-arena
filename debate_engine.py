@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import sys
+sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
+
 """
 AI Debate Arena - Debate Engine
 Last Updated: December 22, 2024
@@ -49,11 +54,11 @@ class DebateEngine:
                 return self._get_deepseek_response(prompt, max_words)
             elif ai_system.startswith("mistral"):
                 return self._get_mistral_response(prompt, max_words)
-            elif ai_system.startswith("cohere"):
+            elif ai_system.startswith("cohere") or ai_system.startswith("command"):
                 return self._get_cohere_response(prompt, max_words)
-            elif ai_system.startswith("groq"):
+            elif ai_system.startswith("groq") or ai_system.startswith("llama"):
                 return self._get_groq_response(prompt, max_words)
-            elif ai_system.startswith("ai21"):
+            elif ai_system.startswith("ai21") or ai_system.startswith("jamba"):
                 return self._get_ai21_response(prompt, max_words)
             else:
                 return f"[ERROR: AI system '{ai_system}' not supported]"
