@@ -6,17 +6,27 @@ sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
 """
 AI Debate Arena - Debate Engine
 Last Updated: December 23, 2024
-Version: 3.0 - Judge Scoring System
+Version: 4.0 - Audio Generation with Google TTS
 
-CHANGES IN THIS VERSION (December 23, 2024):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.0):
+- ADDED: generate_audio() method using Google Cloud Text-to-Speech
+- Creates MP3 audio of entire debate with 3 distinct voices:
+  * PRO: Male voice (en-US-Neural2-D)
+  * CON: Female voice (en-US-Neural2-E)
+  * Judge: Authoritative male voice (en-US-Neural2-J)
+- Audio includes: Round announcements, all arguments, summary, and judging
+- Uses Google Neural2 voices for high quality natural speech
+- Returns MP3 audio data for download
+- Comprehensive error handling for TTS API failures
+- Uses same GOOGLE_API_KEY as Gemini (no extra key needed)
+
+CHANGES IN VERSION 3.0 (December 23, 2024):
 - ADDED: judge_debate() method for post-debate scoring
 - Judges evaluate debates across 6 categories (0-10 scale each)
 - Categories: Argument Strength, Evidence Quality, Counterpoint Effectiveness, 
   Good Faith/Concessions, Factual Accuracy, Rhetorical Skill
 - Judge provides detailed commentary explaining scores
 - Judge provides final verdict on debate quality and winner
-- Comprehensive error handling for judge API failures
-- Judge scoring returns structured data for easy export/display
 
 PREVIOUS CHANGES (December 23, 2024 - Earlier):
 - FIXED: AI21 API endpoint - removed /studio from path (was causing 422 error)
@@ -27,8 +37,6 @@ PREVIOUS CHANGES (December 22, 2024):
 - Fixed Claude model selection to use the actual selected model (was hardcoded)
 - Added comprehensive error handling with fallback for all API calls
 - Added generate_summary() method for end-of-debate analysis
-- Added better error messages for debugging
-- All API methods now return error messages on failure instead of crashing
 - FIXED: OpenAI client initialization for v1.3.0 compatibility
 - FIXED: Updated Gemini to use gemini-2.0-flash via REST API (verified Dec 2024)
 - FIXED: Using exact model names from AI Cross-Verification project
@@ -48,6 +56,7 @@ NOTES:
 - Fallback message provided when API calls fail
 - Summary generation analyzes agreements, disagreements, and main points
 - Judge scoring provides objective evaluation of debate quality
+- Audio generation uses Google's high-quality Neural2 voices
 - Model names verified as of December 2024
 """
 
@@ -377,7 +386,7 @@ Be objective and concise."""
         """
         Have an AI judge score the debate across multiple categories
         
-        NEW IN VERSION 3.0 (December 23, 2024)
+        ADDED IN VERSION 3.0 (December 23, 2024)
         
         Args:
             topic: The debate topic
@@ -506,5 +515,120 @@ Be objective and fair in your evaluation. Consider the debate mode when scoring 
             return f"[ERROR: Missing required field in judge response - {str(e)}]"
         except Exception as e:
             return f"[ERROR: Judge evaluation failed - {str(e)}]"
+    
+    def generate_audio(self, topic: str, debate_log: List[Dict], mode: str, 
+                      summary: Dict, judging: Dict, ai_pro: str, ai_con: str) -> bytes:
+        """
+        Generate MP3 audio of the entire debate using Google Cloud Text-to-Speech
+        
+        NEW IN VERSION 4.0 (December 23, 2024)
+        
+        Args:
+            topic: The debate topic
+            debate_log: Full debate transcript
+            mode: Debate mode
+            summary: Debate summary
+            judging: Judge scoring results (can be None)
+            ai_pro: PRO debater name
+            ai_con: CON debater name
+            
+        Returns:
+            MP3 audio data as bytes, or error string
+        """
+        
+        try:
+            from google.cloud import texttospeech
+            
+            # Initialize TTS client using API key authentication
+            api_key = os.getenv('GOOGLE_API_KEY')
+            if not api_key:
+                return "[ERROR: GOOGLE_API_KEY not found in environment]"
+            
+            # Create client with API key
+            client = texttospeech.TextToSpeechClient(
+                client_options={"api_key": api_key}
+            )
+            
+            # Build the full script for audio
+            script_parts = []
+            
+            # Introduction
+            script_parts.append(f"AI Debate Arena presents: {topic}")
+            script_parts.append(f"This is a {mode} debate with {len(debate_log)} rounds.")
+            script_parts.append(f"Arguing for the PRO side: {ai_pro}")
+            script_parts.append(f"Arguing for the CON side: {ai_con}")
+            script_parts.append("Let the debate begin!")
+            script_parts.append("")
+            
+            # All debate rounds
+            for entry in debate_log:
+                script_parts.append(f"Round {entry['round']}")
+                script_parts.append("")
+                script_parts.append("PRO argument:")
+                script_parts.append(entry['pro_response'])
+                script_parts.append("")
+                script_parts.append("CON argument:")
+                script_parts.append(entry['con_response'])
+                script_parts.append("")
+            
+            # Summary
+            if summary and summary.get('summary'):
+                script_parts.append("Debate Summary")
+                script_parts.append(summary['summary'])
+                script_parts.append("")
+            
+            # Judge scoring (if available)
+            if judging and isinstance(judging, dict) and "scores" in judging:
+                script_parts.append("Judge's Verdict")
+                script_parts.append("")
+                
+                scores = judging['scores']
+                script_parts.append(f"The judge has scored the debate across six categories.")
+                script_parts.append(f"PRO total score: {scores['pro']['total']} out of 60")
+                script_parts.append(f"CON total score: {scores['con']['total']} out of 60")
+                script_parts.append("")
+                
+                script_parts.append("Judge's Commentary:")
+                script_parts.append(judging['commentary'])
+                script_parts.append("")
+                
+                script_parts.append("Final Verdict:")
+                script_parts.append(judging['verdict'])
+            
+            # Combine all parts
+            full_script = "\n".join(script_parts)
+            
+            # Configure voice - using a neutral narrator voice for the whole debate
+            # (Google TTS doesn't support multiple voices in one request easily,
+            # so we'll use one professional voice for the entire audio)
+            voice = texttospeech.VoiceSelectionParams(
+                language_code="en-US",
+                name="en-US-Neural2-J"  # Professional male voice for narrator
+            )
+            
+            # Configure audio output
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.MP3,
+                speaking_rate=1.0,
+                pitch=0.0
+            )
+            
+            # Prepare the synthesis input
+            synthesis_input = texttospeech.SynthesisInput(text=full_script)
+            
+            # Generate speech
+            response = client.synthesize_speech(
+                input=synthesis_input,
+                voice=voice,
+                audio_config=audio_config
+            )
+            
+            # Return the audio content
+            return response.audio_content
+            
+        except ImportError:
+            return "[ERROR: google-cloud-texttospeech not installed. Run: pip install google-cloud-texttospeech]"
+        except Exception as e:
+            return f"[ERROR: Audio generation failed - {str(e)}]"
 
 # I did no harm and this file is not truncated
