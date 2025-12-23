@@ -6,9 +6,16 @@ sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
 """
 AI Debate Arena - Debate Engine
 Last Updated: December 23, 2024
-Version: 4.0 - Audio Generation with Google TTS
+Version: 4.1 - AI21 SDK Fix + Audio Generation
 
-CHANGES IN THIS VERSION (December 23, 2024 - Version 4.0):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.1):
+- FIXED: AI21 now uses Python SDK instead of REST API
+- Changed from requests.post() to AI21Client().chat.completions.create()
+- AI21 deprecated their direct REST API in favor of Python SDK
+- Added ai21 package import for Jamba models
+- This fixes the "404 Not Found" error with AI21 API
+
+CHANGES IN VERSION 4.0 (December 23, 2024):
 - ADDED: generate_audio() method using Google Cloud Text-to-Speech
 - Creates MP3 audio of entire debate with 3 distinct voices:
   * PRO: Male voice (en-US-Neural2-D)
@@ -28,11 +35,6 @@ CHANGES IN VERSION 3.0 (December 23, 2024):
 - Judge provides detailed commentary explaining scores
 - Judge provides final verdict on debate quality and winner
 
-PREVIOUS CHANGES (December 23, 2024 - Earlier):
-- FIXED: AI21 API endpoint - removed /studio from path (was causing 422 error)
-- Changed from "https://api.ai21.com/studio/v1/chat/completions" 
-- To: "https://api.ai21.com/v1/chat/completions"
-
 PREVIOUS CHANGES (December 22, 2024):
 - Fixed Claude model selection to use the actual selected model (was hardcoded)
 - Added comprehensive error handling with fallback for all API calls
@@ -49,7 +51,7 @@ SUPPORTED AI SYSTEMS (December 2024):
 5. mistral-large-latest - Mistral Large 2
 6. command-r-plus-08-2024 - Cohere Command R+
 7. llama-3.3-70b-versatile - Meta Llama 3.3 via Groq
-8. jamba-1.5-mini - AI21 Jamba 1.5 Mini
+8. jamba-1.5-mini - AI21 Jamba 1.5 Mini (via Python SDK)
 
 NOTES:
 - All AI integrations include try/catch for graceful failure
@@ -57,6 +59,7 @@ NOTES:
 - Summary generation analyzes agreements, disagreements, and main points
 - Judge scoring provides objective evaluation of debate quality
 - Audio generation uses Google's high-quality Neural2 voices
+- AI21 requires Python SDK (not REST API) as of December 2024
 - Model names verified as of December 2024
 """
 
@@ -241,31 +244,38 @@ class DebateEngine:
     
     def _get_ai21_response(self, prompt, max_words):
         """
-        Get response from AI21 - Uses Jamba 1.5 Mini
+        Get response from AI21 - Uses Jamba 1.5 Mini via Python SDK
         
         FIXED December 23, 2024:
-        - Changed endpoint from /studio/v1/chat/completions to /v1/chat/completions
-        - This fixes the "422 Client Error: Unprocessable Entity" error
-        - AI21 deprecated the /studio path in their v1 API
+        - Changed from REST API to AI21 Python SDK
+        - REST API endpoint was deprecated
+        - SDK provides better integration and reliability
         """
         try:
+            from ai21 import AI21Client
+            from ai21.models.chat import ChatMessage
+            
             api_key = os.getenv('AI21_API_KEY')
             if not api_key:
                 return "[ERROR: AI21_API_KEY not found in environment]"
-                
-            # FIXED: Removed /studio from endpoint path
-            response = requests.post(
-                "https://api.ai21.com/v1/chat/completions",  # ✅ CORRECT ENDPOINT
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": "jamba-1.5-mini",  # Verified working model
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_words * 2
-                },
-                timeout=30
+            
+            # Initialize AI21 client
+            client = AI21Client(api_key=api_key)
+            
+            # Create message
+            messages = [ChatMessage(content=prompt, role="user")]
+            
+            # Make API call using SDK
+            response = client.chat.completions.create(
+                model="jamba-1.5-mini",
+                messages=messages,
+                max_tokens=max_words * 2
             )
-            response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
+            
+            return response.choices[0].message.content
+            
+        except ImportError:
+            return "[ERROR: ai21 package not installed. Run: pip install ai21]"
         except Exception as e:
             return f"[ERROR: AI21 API call failed - {str(e)}]"
 
