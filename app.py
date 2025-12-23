@@ -1,9 +1,16 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 23, 2024
-Version: 3.0 - Judge Scoring System
+Version: 3.1 - Bug Fix: Judge Error Handling
 
-CHANGES IN THIS VERSION (December 23, 2024):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 3.1):
+- FIXED: TypeError when judge scoring fails - proper type checking for judging object
+- Changed from: if judging and "scores" in judging
+- To: if judging and isinstance(judging, dict) and "scores" in judging
+- This prevents trying to call .get() on string error messages
+- Bug occurred when judge API failed but export functions expected dict
+
+CHANGES IN VERSION 3.0 (December 23, 2024):
 - ADDED: Judge AI selection with optional scoring system
 - ADDED: Post-debate scoring across 6 categories (0-10 scale each)
 - ADDED: Visual score comparison display (PRO vs CON)
@@ -35,6 +42,7 @@ NOTES:
 - All features working as requested
 - Judge scoring appears after debate summary
 - Export buttons include judging results when enabled
+- Proper error handling prevents crashes when judge fails
 - No harm done to existing functionality
 """
 
@@ -123,8 +131,8 @@ def create_csv_export(debate_log, topic, mode, summary=None, judging=None):
         writer.writerow([entry['round'], "PRO", entry['pro_ai'], entry['pro_response']])
         writer.writerow([entry['round'], "CON", entry['con_ai'], entry['con_response']])
     
-    # Add judging results if available
-    if judging and "scores" in judging:
+    # Add judging results if available - FIXED: Check if judging is a dict
+    if judging and isinstance(judging, dict) and "scores" in judging:
         writer.writerow([])
         writer.writerow(["JUDGE SCORING"])
         writer.writerow(["Judge AI", judging.get('judge_ai', 'Unknown')])
@@ -160,7 +168,8 @@ def create_json_export(debate_log, topic, mode, summary=None, judging=None):
         "summary": summary
     }
     
-    if judging:
+    # FIXED: Only add judging if it's a valid dict
+    if judging and isinstance(judging, dict):
         export_data["judging"] = judging
     
     return json.dumps(export_data, indent=2)
@@ -198,7 +207,8 @@ def create_txt_export(debate_log, topic, mode, summary=None, judging=None):
         output.append("=" * 80)
         output.append("")
     
-    if judging and "scores" in judging:
+    # FIXED: Check if judging is a dict before accessing it
+    if judging and isinstance(judging, dict) and "scores" in judging:
         output.append("JUDGE SCORING")
         output.append("=" * 80)
         output.append(f"Judge: {judging.get('judge_ai', 'Unknown')}")
@@ -294,9 +304,10 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 with st.spinner(f"Judge ({judge_ai}) is scoring the debate..."):
                     judging = engine.judge_debate(topic, debate_log, mode, judge_ai, ai_pro, ai_con)
                     
-                    if judging and "[ERROR:" not in str(judging):
+                    # FIXED: Check if judging is a dict before checking for errors
+                    if judging and isinstance(judging, dict) and "scores" in judging:
                         st.success(f"✅ Judge scoring complete!")
-                    elif judging:
+                    else:
                         st.warning("⚠️ Judge scoring encountered an error. See details below.")
             
             st.markdown("---")
@@ -375,8 +386,8 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
             else:
                 st.markdown(summary['summary'])
             
-            # Display judge scoring if available
-            if judging and "scores" in judging:
+            # Display judge scoring if available - FIXED: Proper type checking
+            if judging and isinstance(judging, dict) and "scores" in judging:
                 st.markdown("---")
                 st.markdown("## 🎯 Judge Scoring")
                 st.markdown(f"**Judge:** {judging['judge_ai']}")
@@ -428,7 +439,8 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 st.markdown("### Final Verdict")
                 st.info(judging['verdict'])
                 
-            elif judging and "[ERROR:" in str(judging):
+            elif judging and isinstance(judging, str) and "[ERROR:" in judging:
+                # FIXED: Display error if judging is a string (error message)
                 st.markdown("---")
                 st.markdown("## 🎯 Judge Scoring")
                 st.error(f"Judge scoring failed: {judging}")
