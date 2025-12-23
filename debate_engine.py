@@ -6,14 +6,22 @@ sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
 """
 AI Debate Arena - Debate Engine
 Last Updated: December 23, 2024
-Version: 2.1 - AI21 API Fix
+Version: 3.0 - Judge Scoring System
 
 CHANGES IN THIS VERSION (December 23, 2024):
+- ADDED: judge_debate() method for post-debate scoring
+- Judges evaluate debates across 6 categories (0-10 scale each)
+- Categories: Argument Strength, Evidence Quality, Counterpoint Effectiveness, 
+  Good Faith/Concessions, Factual Accuracy, Rhetorical Skill
+- Judge provides detailed commentary explaining scores
+- Judge provides final verdict on debate quality and winner
+- Comprehensive error handling for judge API failures
+- Judge scoring returns structured data for easy export/display
+
+PREVIOUS CHANGES (December 23, 2024 - Earlier):
 - FIXED: AI21 API endpoint - removed /studio from path (was causing 422 error)
 - Changed from "https://api.ai21.com/studio/v1/chat/completions" 
 - To: "https://api.ai21.com/v1/chat/completions"
-- This fixes the "422 Client Error: Unprocessable Entity" error
-- All other functionality preserved - NO HARM DONE
 
 PREVIOUS CHANGES (December 22, 2024):
 - Fixed Claude model selection to use the actual selected model (was hardcoded)
@@ -33,12 +41,13 @@ SUPPORTED AI SYSTEMS (December 2024):
 5. mistral-large-latest - Mistral Large 2
 6. command-r-plus-08-2024 - Cohere Command R+
 7. llama-3.3-70b-versatile - Meta Llama 3.3 via Groq
-8. jamba-1.5-mini - AI21 Jamba 1.5 Mini (FIXED TODAY)
+8. jamba-1.5-mini - AI21 Jamba 1.5 Mini
 
 NOTES:
 - All AI integrations include try/catch for graceful failure
 - Fallback message provided when API calls fail
 - Summary generation analyzes agreements, disagreements, and main points
+- Judge scoring provides objective evaluation of debate quality
 - Model names verified as of December 2024
 """
 
@@ -47,6 +56,8 @@ import os
 import requests
 import cohere
 from typing import Dict, List, Tuple
+import json
+import re
 
 class DebateEngine:
     def __init__(self):
@@ -360,5 +371,140 @@ Be objective and concise."""
                 "mode": mode,
                 "total_rounds": len(debate_log)
             }
+    
+    def judge_debate(self, topic: str, debate_log: List[Dict], mode: str, 
+                     judge_ai: str, ai_pro: str, ai_con: str) -> Dict:
+        """
+        Have an AI judge score the debate across multiple categories
+        
+        NEW IN VERSION 3.0 (December 23, 2024)
+        
+        Args:
+            topic: The debate topic
+            debate_log: Full debate transcript
+            mode: Debate mode (Adversarial or Truth-Seeking)
+            judge_ai: Which AI system to use as judge
+            ai_pro: PRO debater AI name
+            ai_con: CON debater AI name
+            
+        Returns:
+            Dictionary containing scores, commentary, and verdict
+        """
+        
+        try:
+            # Compile full debate transcript for judge
+            transcript = []
+            for entry in debate_log:
+                transcript.append(f"=== ROUND {entry['round']} ===")
+                transcript.append(f"PRO ({ai_pro}):")
+                transcript.append(entry['pro_response'])
+                transcript.append("")
+                transcript.append(f"CON ({ai_con}):")
+                transcript.append(entry['con_response'])
+                transcript.append("")
+            
+            full_transcript = "\n".join(transcript)
+            
+            # Create judge prompt with scoring criteria
+            judge_prompt = f"""You are serving as a judge for a debate. Your task is to objectively evaluate both debaters' performance across multiple categories.
+
+DEBATE TOPIC: {topic}
+DEBATE MODE: {mode}
+PRO DEBATER: {ai_pro}
+CON DEBATER: {ai_con}
+
+FULL DEBATE TRANSCRIPT:
+{full_transcript}
+
+Please score both debaters on the following categories using a 0-10 scale (where 10 is excellent, 5 is average, 0 is very poor):
+
+1. **Argument Strength** - Logic, coherence, and persuasiveness of their core arguments
+2. **Evidence Quality** - Use of facts, data, examples, and credible sources
+3. **Counterpoint Effectiveness** - How well they addressed and refuted opponent's points
+4. **Good Faith/Concessions** - Willingness to acknowledge valid points and debate in good faith
+5. **Factual Accuracy** - Truthfulness and accuracy of claims made
+6. **Rhetorical Skill** - Communication quality, clarity, and persuasive techniques
+
+IMPORTANT: Provide your response EXACTLY in this JSON format:
+
+{{
+  "pro_scores": {{
+    "argument_strength": <score 0-10>,
+    "evidence_quality": <score 0-10>,
+    "counterpoint_effectiveness": <score 0-10>,
+    "good_faith": <score 0-10>,
+    "factual_accuracy": <score 0-10>,
+    "rhetorical_skill": <score 0-10>
+  }},
+  "con_scores": {{
+    "argument_strength": <score 0-10>,
+    "evidence_quality": <score 0-10>,
+    "counterpoint_effectiveness": <score 0-10>,
+    "good_faith": <score 0-10>,
+    "factual_accuracy": <score 0-10>,
+    "rhetorical_skill": <score 0-10>
+  }},
+  "commentary": "2-3 paragraphs explaining your scoring decisions, highlighting strengths and weaknesses of each side",
+  "verdict": "Final verdict on the debate quality and which side presented a stronger case overall (if applicable)"
+}}
+
+Be objective and fair in your evaluation. Consider the debate mode when scoring (e.g., good faith matters more in Truth-Seeking mode)."""
+
+            # Get judge's evaluation
+            judge_response = self.get_response(judge_ai, judge_prompt, max_words=800)
+            
+            # Check for API errors
+            if "[ERROR:" in judge_response:
+                return f"[ERROR: Judge API call failed - {judge_response}]"
+            
+            # Parse the JSON response
+            # Try to extract JSON from the response (handle cases where AI adds extra text)
+            json_match = re.search(r'\{.*\}', judge_response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                judge_data = json.loads(json_str)
+            else:
+                # Fallback: try parsing whole response
+                judge_data = json.loads(judge_response)
+            
+            # Calculate totals
+            pro_total = sum(judge_data['pro_scores'].values())
+            con_total = sum(judge_data['con_scores'].values())
+            
+            # Format results
+            result = {
+                "judge_ai": judge_ai,
+                "scores": {
+                    "pro": {
+                        "argument_strength": judge_data['pro_scores']['argument_strength'],
+                        "evidence_quality": judge_data['pro_scores']['evidence_quality'],
+                        "counterpoint_effectiveness": judge_data['pro_scores']['counterpoint_effectiveness'],
+                        "good_faith": judge_data['pro_scores']['good_faith'],
+                        "factual_accuracy": judge_data['pro_scores']['factual_accuracy'],
+                        "rhetorical_skill": judge_data['pro_scores']['rhetorical_skill'],
+                        "total": pro_total
+                    },
+                    "con": {
+                        "argument_strength": judge_data['con_scores']['argument_strength'],
+                        "evidence_quality": judge_data['con_scores']['evidence_quality'],
+                        "counterpoint_effectiveness": judge_data['con_scores']['counterpoint_effectiveness'],
+                        "good_faith": judge_data['con_scores']['good_faith'],
+                        "factual_accuracy": judge_data['con_scores']['factual_accuracy'],
+                        "rhetorical_skill": judge_data['con_scores']['rhetorical_skill'],
+                        "total": con_total
+                    }
+                },
+                "commentary": judge_data['commentary'],
+                "verdict": judge_data['verdict']
+            }
+            
+            return result
+            
+        except json.JSONDecodeError as e:
+            return f"[ERROR: Could not parse judge response as JSON - {str(e)}. Response was: {judge_response[:200]}...]"
+        except KeyError as e:
+            return f"[ERROR: Missing required field in judge response - {str(e)}]"
+        except Exception as e:
+            return f"[ERROR: Judge evaluation failed - {str(e)}]"
 
 # I did no harm and this file is not truncated
