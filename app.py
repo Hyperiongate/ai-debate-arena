@@ -1,6 +1,7 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 22, 2024
+Version: 2.0 - Cache Buster
 
 CHANGES:
 - Added export functionality (CSV, JSON, TXT formats)
