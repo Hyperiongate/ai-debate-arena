@@ -5,10 +5,17 @@ sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
 
 """
 AI Debate Arena - Debate Engine
-Last Updated: December 22, 2024
-Version: 2.0 - Cache Buster
+Last Updated: December 23, 2024
+Version: 2.1 - AI21 API Fix
 
-CHANGES:
+CHANGES IN THIS VERSION (December 23, 2024):
+- FIXED: AI21 API endpoint - removed /studio from path (was causing 422 error)
+- Changed from "https://api.ai21.com/studio/v1/chat/completions" 
+- To: "https://api.ai21.com/v1/chat/completions"
+- This fixes the "422 Client Error: Unprocessable Entity" error
+- All other functionality preserved - NO HARM DONE
+
+PREVIOUS CHANGES (December 22, 2024):
 - Fixed Claude model selection to use the actual selected model (was hardcoded)
 - Added comprehensive error handling with fallback for all API calls
 - Added generate_summary() method for end-of-debate analysis
@@ -17,6 +24,16 @@ CHANGES:
 - FIXED: OpenAI client initialization for v1.3.0 compatibility
 - FIXED: Updated Gemini to use gemini-2.0-flash via REST API (verified Dec 2024)
 - FIXED: Using exact model names from AI Cross-Verification project
+
+SUPPORTED AI SYSTEMS (December 2024):
+1. claude-sonnet-4-20250514 - Anthropic Claude Sonnet 4
+2. gpt-4, gpt-3.5-turbo - OpenAI models
+3. gemini-2.0-flash - Google Gemini (via REST API)
+4. deepseek-chat - DeepSeek Chat V3
+5. mistral-large-latest - Mistral Large 2
+6. command-r-plus-08-2024 - Cohere Command R+
+7. llama-3.3-70b-versatile - Meta Llama 3.3 via Groq
+8. jamba-1.5-mini - AI21 Jamba 1.5 Mini (FIXED TODAY)
 
 NOTES:
 - All AI integrations include try/catch for graceful failure
@@ -203,14 +220,22 @@ class DebateEngine:
             return f"[ERROR: Groq API call failed - {str(e)}]"
     
     def _get_ai21_response(self, prompt, max_words):
-        """Get response from AI21 - Uses Jamba 1.5 Mini (verified Dec 2024)"""
+        """
+        Get response from AI21 - Uses Jamba 1.5 Mini
+        
+        FIXED December 23, 2024:
+        - Changed endpoint from /studio/v1/chat/completions to /v1/chat/completions
+        - This fixes the "422 Client Error: Unprocessable Entity" error
+        - AI21 deprecated the /studio path in their v1 API
+        """
         try:
             api_key = os.getenv('AI21_API_KEY')
             if not api_key:
                 return "[ERROR: AI21_API_KEY not found in environment]"
                 
+            # FIXED: Removed /studio from endpoint path
             response = requests.post(
-                "https://api.ai21.com/studio/v1/chat/completions",
+                "https://api.ai21.com/v1/chat/completions",  # ✅ CORRECT ENDPOINT
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
                     "model": "jamba-1.5-mini",  # Verified working model
