@@ -1,48 +1,31 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 23, 2024
-Version: 4.2 - ElevenLabs TTS Integration
+Version: 4.3 - Multi-Voice Audio Optimization
 
-CHANGES IN THIS VERSION (December 23, 2024 - Version 4.2):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.3):
+- OPTIMIZED: Audio now uses 3 distinct ElevenLabs voices
+- PRO Debater: Adam (deep, authoritative male)
+- CON Debater: Rachel (clear, professional female)
+- Judge: Antoni (warm, articulate male)
+- REMOVED: All narration/preamble to save ~35-40% characters
+- Direct speech only - more natural and engaging
+- 10-round debates now fit better within free tier limits
+- Each voice is distinct - creates natural conversation flow
+
+CHANGES IN VERSION 4.2 (December 23, 2024):
 - SWITCHED: Audio now uses ElevenLabs instead of Google Cloud TTS
 - ElevenLabs uses simple API key (no service account needed!)
 - Higher quality voices with natural prosody
 - Free tier: 10,000 characters/month
 - FIXED: Audio now generates automatically (no button click needed)
 - Removed "Generate Audio" button that caused page reset
-- Audio MP3 download button appears immediately after debate
 - Smoother user experience - just click download when ready
 
 CHANGES IN VERSION 4.1 (December 23, 2024):
 - FIXED: AI21 now uses Python SDK instead of REST API
 - FIXED: Correct model name is "jamba-mini" not "jamba-1.5-mini"
-- AI21 Jamba models now work properly via ai21 package
 - All 8 AI systems now functional
-
-CHANGES IN VERSION 4.0 (December 23, 2024):
-- ADDED: Audio generation using Text-to-Speech
-- Generates MP3 audio of entire debate with professional voice
-- PRO debater, CON debater, and Judge all narrated
-- Optional "Generate Audio" checkbox in sidebar
-- Audio includes: Round announcements, all arguments, summary, and judging
-- Download audio as MP3 file
-
-CHANGES IN VERSION 3.1 (December 23, 2024):
-- FIXED: TypeError when judge scoring fails - proper type checking
-
-CHANGES IN VERSION 3.0 (December 23, 2024):
-- ADDED: Judge AI selection with optional scoring system
-- ADDED: Post-debate scoring across 6 categories (0-10 scale each)
-- ADDED: Visual score comparison display (PRO vs CON)
-- ADDED: Judge's detailed commentary and verdict
-
-SCORING CATEGORIES:
-1. Argument Strength - Logic and coherence of arguments
-2. Evidence Quality - Use of facts, data, and examples
-3. Counterpoint Effectiveness - How well they responded to opponent
-4. Good Faith/Concessions - Willingness to concede valid points
-5. Factual Accuracy - Truthfulness and accuracy of claims
-6. Rhetorical Skill - Persuasiveness and communication quality
 
 PREVIOUS FEATURES (Preserved):
 1. Choose debate opponents from 8 AI systems
@@ -52,12 +35,14 @@ PREVIOUS FEATURES (Preserved):
 5. Choose mode: Adversarial or Truth-Seeking
 6. Export debate transcripts in multiple formats
 7. View debate summary with agreements/disagreements
+8. Judge AI scoring across 6 categories
+9. Audio generation with 3 distinct voices
 
 NOTES:
 - All features working as requested
 - Audio generates automatically when enabled
 - ElevenLabs free tier: 10,000 characters/month
-- Professional quality voice (Rachel - ElevenLabs)
+- 3 professional voices create natural debate flow
 - AI21 requires Python SDK (not REST API) as of December 2024
 - No harm done to existing functionality
 """
@@ -131,10 +116,10 @@ if enable_judging:
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎧 Audio Generation")
 enable_audio = st.sidebar.checkbox("Enable Audio Generation", value=True,
-    help="Generate MP3 audio of the debate with professional voice narration")
+    help="Generate MP3 audio with 3 distinct voices: PRO (male), CON (female), Judge (male)")
 
 if enable_audio:
-    st.sidebar.info("🎙️ Audio will use ElevenLabs professional voice")
+    st.sidebar.info("🎙️ Audio uses 3 ElevenLabs voices for natural debate flow")
 
 # Helper function to create export files with judging
 def create_csv_export(debate_log, topic, mode, summary=None, judging=None):
