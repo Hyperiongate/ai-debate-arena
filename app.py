@@ -94,7 +94,7 @@ ai_options = [
     "mistral-large-latest",          # Mistral Large 2
     "command-r-plus-08-2024",        # Cohere Command R+ (Aug 2024)
     "llama-3.3-70b-versatile",       # Meta Llama 3.3 70B via Groq
-    "jamba-1.5-mini"                 # AI21 Jamba 1.5 Mini (via Python SDK)
+    "jamba-mini"                     # AI21 Jamba Mini (via Python SDK)
 ]
 
 col1, col2 = st.sidebar.columns(2)
