@@ -4,7 +4,7 @@
 #
 # NEW IN THIS VERSION:
 # - FIXED: AI21 now uses Python SDK instead of REST API
-# - Added ai21 package for Jamba models
+# - Added ai21 package for Jamba models (version 4.3.0 latest)
 # - Added google-cloud-texttospeech for audio debate generation
 # - Generates MP3 audio with 3 different voices (PRO, CON, Judge)
 #
@@ -24,6 +24,6 @@ python-dotenv==1.0.0
 requests==2.31.0
 cohere==4.37
 google-cloud-texttospeech==2.14.1  # For audio generation
-ai21==2.13.1  # FIXED: AI21 Python SDK for Jamba models
+ai21==4.3.0  # FIXED: AI21 Python SDK for Jamba models (latest version)
 
 # I did no harm and this file is not truncated
