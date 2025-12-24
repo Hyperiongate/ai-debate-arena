@@ -1,21 +1,27 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 23, 2024
-Version: 4.1 - AI21 SDK Fix + Audio Generation
+Version: 4.2 - Audio Auto-Generation Fix
 
-CHANGES IN THIS VERSION (December 23, 2024 - Version 4.1):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.2):
+- FIXED: Audio now generates automatically (no button click needed)
+- Removed "Generate Audio" button that caused page reset
+- Audio MP3 download button appears immediately after debate
+- Prevents Streamlit page rerun issue when clicking audio button
+- Smoother user experience - just click download when ready
+
+CHANGES IN VERSION 4.1 (December 23, 2024):
 - FIXED: AI21 now uses Python SDK instead of REST API
+- FIXED: Correct model name is "jamba-mini" not "jamba-1.5-mini"
 - AI21 Jamba models now work properly via ai21 package
-- This fixes the "404 Not Found" error with AI21
+- This fixes the "404 Not Found" and "422 Unprocessable Entity" errors
 - All 8 AI systems now functional
 
 CHANGES IN VERSION 4.0 (December 23, 2024):
 - ADDED: Audio generation using Google Cloud Text-to-Speech
-- Generates MP3 audio of entire debate with 3 distinct voices
-- PRO debater: Male voice (en-US-Neural2-D)
-- CON debater: Female voice (en-US-Neural2-E)  
-- Judge: Authoritative male voice (en-US-Neural2-J)
-- Optional "Generate Audio" button appears after debate completes
+- Generates MP3 audio of entire debate with professional voice
+- PRO debater, CON debater, and Judge all narrated
+- Optional "Generate Audio" checkbox in sidebar
 - Audio includes: Round announcements, all arguments, summary, and judging
 - Download audio as MP3 file
 - Uses same GOOGLE_API_KEY as Gemini (no extra API key needed)
@@ -50,7 +56,7 @@ PREVIOUS FEATURES (Preserved):
 
 NOTES:
 - All features working as requested
-- Audio generation is optional (separate button)
+- Audio generates automatically when enabled
 - Google Cloud TTS has 1 million chars/month free tier
 - Audio quality is very good (Neural2 voices)
 - AI21 requires Python SDK (not REST API) as of December 2024
@@ -371,23 +377,24 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
             with col4:
                 # Audio generation button (NEW)
                 if enable_audio and not has_errors:
-                    if st.button("🎧 Generate Audio", type="secondary"):
-                        with st.spinner("Generating audio with Google TTS..."):
-                            try:
-                                audio_data = engine.generate_audio(topic, debate_log, mode, summary, judging, ai_pro, ai_con)
-                                
-                                if audio_data and not isinstance(audio_data, str):
-                                    st.download_button(
-                                        label="🔊 Download MP3",
-                                        data=audio_data,
-                                        file_name=f"debate_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3",
-                                        mime="audio/mpeg"
-                                    )
-                                    st.success("✅ Audio generated successfully!")
-                                else:
-                                    st.error(f"❌ Audio generation failed: {audio_data}")
-                            except Exception as e:
-                                st.error(f"❌ Audio generation error: {str(e)}")
+                    # Generate audio immediately instead of waiting for button click
+                    with st.spinner("Generating audio with Google TTS..."):
+                        try:
+                            audio_data = engine.generate_audio(topic, debate_log, mode, summary, judging, ai_pro, ai_con)
+                            
+                            if audio_data and not isinstance(audio_data, str):
+                                st.download_button(
+                                    label="🎧 Download MP3",
+                                    data=audio_data,
+                                    file_name=f"debate_audio_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3",
+                                    mime="audio/mpeg",
+                                    type="secondary"
+                                )
+                                st.success("✅ Audio generated!")
+                            else:
+                                st.error(f"❌ Audio generation failed: {audio_data}")
+                        except Exception as e:
+                            st.error(f"❌ Audio generation error: {str(e)}")
             
             st.markdown("---")
             
