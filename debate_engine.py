@@ -6,9 +6,17 @@ sys.dont_write_bytecode = True  # Force Python to ignore .pyc cache
 """
 AI Debate Arena - Debate Engine
 Last Updated: December 23, 2024
-Version: 4.1 - AI21 SDK Fix + Audio Generation
+Version: 4.2 - ElevenLabs TTS Integration
 
-CHANGES IN THIS VERSION (December 23, 2024 - Version 4.1):
+CHANGES IN THIS VERSION (December 23, 2024 - Version 4.2):
+- SWITCHED: Audio generation now uses ElevenLabs instead of Google Cloud TTS
+- ElevenLabs uses simple API key authentication (no service account!)
+- Professional quality voice: Rachel (ElevenLabs preset)
+- Free tier: 10,000 characters/month
+- Much simpler setup - just add ELEVENLABS_API_KEY to environment
+- Removed Google Cloud TTS dependency
+
+CHANGES IN VERSION 4.1 (December 23, 2024):
 - FIXED: AI21 now uses Python SDK instead of REST API
 - Changed from requests.post() to AI21Client().chat.completions.create()
 - AI21 deprecated their direct REST API in favor of Python SDK
@@ -58,7 +66,7 @@ NOTES:
 - Fallback message provided when API calls fail
 - Summary generation analyzes agreements, disagreements, and main points
 - Judge scoring provides objective evaluation of debate quality
-- Audio generation uses Google's high-quality Neural2 voices
+- Audio generation uses ElevenLabs professional voices
 - AI21 requires Python SDK (not REST API) as of December 2024
 - Model names verified as of December 2024
 """
@@ -531,9 +539,13 @@ Be objective and fair in your evaluation. Consider the debate mode when scoring 
     def generate_audio(self, topic: str, debate_log: List[Dict], mode: str, 
                       summary: Dict, judging: Dict, ai_pro: str, ai_con: str) -> bytes:
         """
-        Generate MP3 audio of the entire debate using Google Cloud Text-to-Speech
+        Generate MP3 audio of the entire debate using ElevenLabs Text-to-Speech
         
-        NEW IN VERSION 4.0 (December 23, 2024)
+        UPDATED IN VERSION 4.2 (December 23, 2024)
+        - Switched from Google Cloud TTS to ElevenLabs
+        - ElevenLabs uses simple API key authentication
+        - No service account needed (much simpler!)
+        - Free tier: 10,000 characters/month
         
         Args:
             topic: The debate topic
@@ -549,17 +561,15 @@ Be objective and fair in your evaluation. Consider the debate mode when scoring 
         """
         
         try:
-            from google.cloud import texttospeech
+            from elevenlabs import VoiceSettings
+            from elevenlabs.client import ElevenLabs
             
-            # Initialize TTS client using API key authentication
-            api_key = os.getenv('GOOGLE_API_KEY')
+            # Initialize ElevenLabs client
+            api_key = os.getenv('ELEVENLABS_API_KEY')
             if not api_key:
-                return "[ERROR: GOOGLE_API_KEY not found in environment]"
+                return "[ERROR: ELEVENLABS_API_KEY not found in environment]"
             
-            # Create client with API key
-            client = texttospeech.TextToSpeechClient(
-                client_options={"api_key": api_key}
-            )
+            client = ElevenLabs(api_key=api_key)
             
             # Build the full script for audio
             script_parts = []
@@ -610,36 +620,30 @@ Be objective and fair in your evaluation. Consider the debate mode when scoring 
             # Combine all parts
             full_script = "\n".join(script_parts)
             
-            # Configure voice - using a neutral narrator voice for the whole debate
-            # (Google TTS doesn't support multiple voices in one request easily,
-            # so we'll use one professional voice for the entire audio)
-            voice = texttospeech.VoiceSelectionParams(
-                language_code="en-US",
-                name="en-US-Neural2-J"  # Professional male voice for narrator
+            # Generate audio using ElevenLabs
+            # Using "Rachel" voice - professional female narrator
+            audio_generator = client.text_to_speech.convert(
+                voice_id="21m00Tcm4TlvDq8ikWAM",  # Rachel - clear, professional voice
+                text=full_script,
+                model_id="eleven_multilingual_v2",
+                voice_settings=VoiceSettings(
+                    stability=0.5,
+                    similarity_boost=0.75,
+                    style=0.0,
+                    use_speaker_boost=True
+                )
             )
             
-            # Configure audio output
-            audio_config = texttospeech.AudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.MP3,
-                speaking_rate=1.0,
-                pitch=0.0
-            )
+            # Collect audio chunks into bytes
+            audio_bytes = b""
+            for chunk in audio_generator:
+                if chunk:
+                    audio_bytes += chunk
             
-            # Prepare the synthesis input
-            synthesis_input = texttospeech.SynthesisInput(text=full_script)
-            
-            # Generate speech
-            response = client.synthesize_speech(
-                input=synthesis_input,
-                voice=voice,
-                audio_config=audio_config
-            )
-            
-            # Return the audio content
-            return response.audio_content
+            return audio_bytes
             
         except ImportError:
-            return "[ERROR: google-cloud-texttospeech not installed. Run: pip install google-cloud-texttospeech]"
+            return "[ERROR: elevenlabs package not installed. Run: pip install elevenlabs]"
         except Exception as e:
             return f"[ERROR: Audio generation failed - {str(e)}]"
 
