@@ -1,35 +1,34 @@
 """
 AI Debate Arena - Streamlit Application
 Last Updated: December 23, 2024
-Version: 4.2 - Audio Auto-Generation Fix
+Version: 4.2 - ElevenLabs TTS Integration
 
 CHANGES IN THIS VERSION (December 23, 2024 - Version 4.2):
+- SWITCHED: Audio now uses ElevenLabs instead of Google Cloud TTS
+- ElevenLabs uses simple API key (no service account needed!)
+- Higher quality voices with natural prosody
+- Free tier: 10,000 characters/month
 - FIXED: Audio now generates automatically (no button click needed)
 - Removed "Generate Audio" button that caused page reset
 - Audio MP3 download button appears immediately after debate
-- Prevents Streamlit page rerun issue when clicking audio button
 - Smoother user experience - just click download when ready
 
 CHANGES IN VERSION 4.1 (December 23, 2024):
 - FIXED: AI21 now uses Python SDK instead of REST API
 - FIXED: Correct model name is "jamba-mini" not "jamba-1.5-mini"
 - AI21 Jamba models now work properly via ai21 package
-- This fixes the "404 Not Found" and "422 Unprocessable Entity" errors
 - All 8 AI systems now functional
 
 CHANGES IN VERSION 4.0 (December 23, 2024):
-- ADDED: Audio generation using Google Cloud Text-to-Speech
+- ADDED: Audio generation using Text-to-Speech
 - Generates MP3 audio of entire debate with professional voice
 - PRO debater, CON debater, and Judge all narrated
 - Optional "Generate Audio" checkbox in sidebar
 - Audio includes: Round announcements, all arguments, summary, and judging
 - Download audio as MP3 file
-- Uses same GOOGLE_API_KEY as Gemini (no extra API key needed)
 
 CHANGES IN VERSION 3.1 (December 23, 2024):
-- FIXED: TypeError when judge scoring fails - proper type checking for judging object
-- Changed from: if judging and "scores" in judging
-- To: if judging and isinstance(judging, dict) and "scores" in judging
+- FIXED: TypeError when judge scoring fails - proper type checking
 
 CHANGES IN VERSION 3.0 (December 23, 2024):
 - ADDED: Judge AI selection with optional scoring system
@@ -57,8 +56,8 @@ PREVIOUS FEATURES (Preserved):
 NOTES:
 - All features working as requested
 - Audio generates automatically when enabled
-- Google Cloud TTS has 1 million chars/month free tier
-- Audio quality is very good (Neural2 voices)
+- ElevenLabs free tier: 10,000 characters/month
+- Professional quality voice (Rachel - ElevenLabs)
 - AI21 requires Python SDK (not REST API) as of December 2024
 - No harm done to existing functionality
 """
@@ -132,10 +131,10 @@ if enable_judging:
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🎧 Audio Generation")
 enable_audio = st.sidebar.checkbox("Enable Audio Generation", value=True,
-    help="Generate MP3 audio of the debate with different voices for PRO, CON, and Judge")
+    help="Generate MP3 audio of the debate with professional voice narration")
 
 if enable_audio:
-    st.sidebar.info("🎙️ Audio will use 3 distinct Google TTS voices")
+    st.sidebar.info("🎙️ Audio will use ElevenLabs professional voice")
 
 # Helper function to create export files with judging
 def create_csv_export(debate_log, topic, mode, summary=None, judging=None):
@@ -296,8 +295,8 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 missing_keys.append(key_name)
     
     # Check for Google API key if audio is enabled
-    if enable_audio and not os.getenv("GOOGLE_API_KEY"):
-        missing_keys.append("GOOGLE_API_KEY")
+    if enable_audio and not os.getenv("ELEVENLABS_API_KEY"):
+        missing_keys.append("ELEVENLABS_API_KEY")
     
     if missing_keys:
         st.error(f"⚠️ Missing API keys: {', '.join(set(missing_keys))}")
@@ -378,7 +377,7 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
                 # Audio generation button (NEW)
                 if enable_audio and not has_errors:
                     # Generate audio immediately instead of waiting for button click
-                    with st.spinner("Generating audio with Google TTS..."):
+                    with st.spinner("Generating audio with ElevenLabs..."):
                         try:
                             audio_data = engine.generate_audio(topic, debate_log, mode, summary, judging, ai_pro, ai_con)
                             
