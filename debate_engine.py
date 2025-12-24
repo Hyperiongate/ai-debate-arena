@@ -51,7 +51,7 @@ SUPPORTED AI SYSTEMS (December 2024):
 5. mistral-large-latest - Mistral Large 2
 6. command-r-plus-08-2024 - Cohere Command R+
 7. llama-3.3-70b-versatile - Meta Llama 3.3 via Groq
-8. jamba-1.5-mini - AI21 Jamba 1.5 Mini (via Python SDK)
+8. jamba-mini - AI21 Jamba Mini (via Python SDK)
 
 NOTES:
 - All AI integrations include try/catch for graceful failure
@@ -244,12 +244,13 @@ class DebateEngine:
     
     def _get_ai21_response(self, prompt, max_words):
         """
-        Get response from AI21 - Uses Jamba 1.5 Mini via Python SDK
+        Get response from AI21 - Uses Jamba Mini via Python SDK
         
         FIXED December 23, 2024:
         - Changed from REST API to AI21 Python SDK
         - REST API endpoint was deprecated
         - SDK provides better integration and reliability
+        - Model name is "jamba-mini" (not "jamba-1.5-mini")
         """
         try:
             from ai21 import AI21Client
@@ -266,8 +267,9 @@ class DebateEngine:
             messages = [ChatMessage(content=prompt, role="user")]
             
             # Make API call using SDK
+            # Model name is "jamba-mini" not "jamba-1.5-mini"
             response = client.chat.completions.create(
-                model="jamba-1.5-mini",
+                model="jamba-mini",
                 messages=messages,
                 max_tokens=max_words * 2
             )
