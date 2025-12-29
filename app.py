@@ -1,8 +1,14 @@
 # AI Debate Arena - Streamlit Application
-# Last Updated: December 24, 2024
-# Version: 4.4 - Audio Default OFF + Usage Note
+# Last Updated: December 28, 2024
+# Version: 4.5 - 50-Word Minimum Argument Length
 #
-# CHANGES IN THIS VERSION (December 24, 2024 - Version 4.4):
+# CHANGES IN THIS VERSION (December 28, 2024 - Version 4.5):
+# - CHANGED: Minimum argument length now 50 words (was 100)
+# - Allows for more concise arguments and faster debates
+# - Range now: 50-500 words per turn (step: 50)
+# - All other functionality preserved
+#
+# CHANGES IN VERSION 4.4 (December 24, 2024):
 # - CHANGED: Audio generation now defaults to OFF (was ON)
 # - ADDED: Warning note that audio currently only works well with 3-round debates
 # - User must explicitly enable audio if they want it
@@ -101,7 +107,7 @@ with col2:
 
 # Debate parameters
 rounds = st.sidebar.slider("Number of Rounds", min_value=3, max_value=15, value=5)
-word_limit = st.sidebar.slider("Words per Turn", min_value=100, max_value=500, value=200, step=50)
+word_limit = st.sidebar.slider("Words per Turn", min_value=50, max_value=500, value=200, step=50)
 
 # Mode selection
 mode = st.sidebar.radio("Debate Mode", ["Adversarial", "Truth-Seeking"])
@@ -496,7 +502,7 @@ else:
     ### How to Use:
     1. **Enter a debate topic** - Make it a clear proposition (e.g., "X should happen")
     2. **Select AI systems** - Choose which AIs will argue PRO and CON
-    3. **Set parameters** - Rounds (3-15), word limit (100-500)
+    3. **Set parameters** - Rounds (3-15), word limit (50-500)
     4. **Choose mode**:
        - **Adversarial**: AIs try to win the debate
        - **Truth-Seeking**: AIs collaborate to find the best answer
@@ -548,7 +554,7 @@ else:
     ### Features:
     ✅ Choose any 2 of 8 AI systems as opponents  
     ✅ Configure rounds (3-15)  
-    ✅ Set word limit per response (100-500)  
+    ✅ Set word limit per response (50-500)  
     ✅ Custom debate topics  
     ✅ Two debate modes: Adversarial vs Truth-Seeking  
     ✅ Optional AI judge scoring across 6 categories  
