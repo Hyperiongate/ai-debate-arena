@@ -1,23 +1,36 @@
 # AI Debate Arena - Streamlit Application
 # Last Updated: January 10, 2026
-# Version: 5.0 - TRUTHLENS NAVIGATION INTEGRATION
+# Version: 6.0 - UPGRADED TO 10 AI SYSTEMS
 #
-# CHANGES IN THIS VERSION (January 10, 2026 - Version 5.0):
-# - ADDED: TruthLens ecosystem navigation at top of page
-# - Links to all TruthLens tools (News, AI Council, Observatory, etc.)
-# - Styled to match TruthLens purple gradient theme
-# - Current page (AI Debates) highlighted
+# CHANGES IN THIS VERSION (January 10, 2026 - Version 6.0):
+# - UPGRADED: Now supports 10 AI systems (was 9)
+# - ADDED: Perplexity AI Sonar (real-time web search AI)
+# - NOW MATCHES: AI Council and AI Bias Research (all have 10 systems)
+# - Updated instructions and help text
 # - All existing functionality preserved (DO NO HARM ✓)
 #
 # PREVIOUS CHANGES:
+# - Version 5.0 (January 10, 2026): TruthLens navigation integration
 # - Version 4.5 (December 28, 2024): 50-word minimum argument length
 # - Version 4.4 (December 24, 2024): Audio defaults to OFF
 # - Version 4.3 (December 23, 2024): 3 distinct ElevenLabs voices
 # - Version 4.2 (December 23, 2024): Switched to ElevenLabs API
 # - Version 4.1 (December 23, 2024): Fixed AI21 Jamba integration
 #
+# WORKING AI SYSTEMS (10 total - UPGRADED!):
+# 1. Anthropic Claude Sonnet 4
+# 2. OpenAI GPT-4
+# 3. OpenAI GPT-3.5 Turbo
+# 4. Google Gemini 2.0 Flash
+# 5. DeepSeek Chat V3
+# 6. Mistral Large 2
+# 7. Cohere Command R+
+# 8. Meta Llama 3.3 70B (via Groq)
+# 9. AI21 Jamba Mini
+# 10. Perplexity AI Sonar (NEW!)
+#
 # FEATURES:
-# - Choose debate opponents from 8 AI systems
+# - Choose debate opponents from 10 AI systems
 # - Configure rounds (3-15) and word limits (50-500)
 # - Adversarial or Truth-Seeking modes
 # - Optional AI judge scoring across 6 categories
@@ -26,6 +39,7 @@
 # - Integrated with TruthLens ecosystem navigation
 #
 # I did no harm and this file is not truncated
+# Version 6.0 - January 10, 2026 - UPGRADED TO 10 AI SYSTEMS!
 
 import streamlit as st
 from debate_engine import DebateEngine
@@ -103,7 +117,7 @@ render_truthlens_nav()
 
 # Title
 st.title("⚔️ AI Debate Arena")
-st.markdown("*Research tool for AI-to-AI debate analysis*")
+st.markdown("*Research tool for AI-to-AI debate analysis - Now with 10 AI systems!*")
 
 # Sidebar controls
 st.sidebar.header("Debate Configuration")
@@ -113,17 +127,18 @@ topic = st.sidebar.text_input("Debate Topic",
     value="Universal Basic Income should be implemented nationally within 5 years",
     help="Enter the proposition to be debated")
 
-# AI selection - VERIFIED WORKING MODELS (December 2024)
+# AI selection - NOW 10 SYSTEMS!
 ai_options = [
-    "claude-sonnet-4-20250514",      # Anthropic Claude Sonnet 4
-    "gpt-4",                         # OpenAI GPT-4
-    "gpt-3.5-turbo",                 # OpenAI GPT-3.5 Turbo
-    "gemini-2.0-flash",              # Google Gemini 2.0 Flash
-    "deepseek-chat",                 # DeepSeek Chat V3
-    "mistral-large-latest",          # Mistral Large 2
-    "command-r-plus-08-2024",        # Cohere Command R+ (Aug 2024)
-    "llama-3.3-70b-versatile",       # Meta Llama 3.3 70B via Groq
-    "jamba-mini"                     # AI21 Jamba Mini (via Python SDK)
+    "claude-sonnet-4-20250514",           # Anthropic Claude Sonnet 4
+    "gpt-4",                              # OpenAI GPT-4
+    "gpt-3.5-turbo",                      # OpenAI GPT-3.5 Turbo
+    "gemini-2.0-flash",                   # Google Gemini 2.0 Flash
+    "deepseek-chat",                      # DeepSeek Chat V3
+    "mistral-large-latest",               # Mistral Large 2
+    "command-r-plus-08-2024",             # Cohere Command R+ (Aug 2024)
+    "llama-3.3-70b-versatile",            # Meta Llama 3.3 70B via Groq
+    "jamba-mini",                         # AI21 Jamba Mini (via Python SDK)
+    "llama-3.1-sonar-large-128k-online"   # Perplexity AI Sonar (NEW!)
 ]
 
 col1, col2 = st.sidebar.columns(2)
@@ -301,7 +316,8 @@ if st.sidebar.button("🎯 Run Debate", type="primary"):
         "cohere": "COHERE_API_KEY",
         "command": "COHERE_API_KEY",
         "groq": "GROQ_API_KEY",
-        "llama": "GROQ_API_KEY",
+        "llama-3.3": "GROQ_API_KEY",
+        "llama-3.1-sonar": "PERPLEXITY_API_KEY",  # NEW!
         "ai21": "AI21_API_KEY",
         "jamba": "AI21_API_KEY"
     }
@@ -549,7 +565,7 @@ else:
     - Create audio debates for presentations or podcasts (3 rounds recommended)
     - Export debates for further analysis
     
-    ### Available AI Systems (Verified December 2024):
+    ### Available AI Systems (10 Total - Verified January 2026):
     - **Claude Sonnet 4** - Anthropic's latest model
     - **GPT-4** - OpenAI's flagship model
     - **GPT-3.5 Turbo** - Faster OpenAI alternative
@@ -558,7 +574,8 @@ else:
     - **Mistral Large 2** - European AI (France)
     - **Cohere Command R+ (Aug 2024)** - Canadian AI
     - **Llama 3.3 70B** - Meta's open source via Groq
-    - **AI21 Jamba 1.5 Mini** - Israeli hybrid model
+    - **AI21 Jamba Mini** - Israeli hybrid model
+    - **Perplexity AI Sonar** - Real-time web search AI (NEW!)
     
     ### Audio Generation:
     - **PRO Voice**: Adam (deep, authoritative male)
@@ -579,7 +596,7 @@ else:
     - **Rhetorical Skill** - Persuasiveness and communication quality
     
     ### Features:
-    ✅ Choose any 2 of 8 AI systems as opponents  
+    ✅ Choose any 2 of 10 AI systems as opponents  
     ✅ Configure rounds (3-15)  
     ✅ Set word limit per response (50-500)  
     ✅ Custom debate topics  
@@ -591,6 +608,8 @@ else:
     ✅ Automatic summary of main points, agreements, and disagreements  
     ✅ Error handling with fallback messages  
     ✅ **Integrated with TruthLens ecosystem navigation**  
+    ✅ **NOW SUPPORTS 10 AI SYSTEMS!**  
     """)
 
 # I did no harm and this file is not truncated
+# Version 6.0 - January 10, 2026 - UPGRADED TO 10 AI SYSTEMS!
