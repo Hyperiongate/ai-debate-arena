@@ -1,63 +1,31 @@
 # AI Debate Arena - Streamlit Application
-# Last Updated: December 28, 2024
-# Version: 4.5 - 50-Word Minimum Argument Length
+# Last Updated: January 10, 2026
+# Version: 5.0 - TRUTHLENS NAVIGATION INTEGRATION
 #
-# CHANGES IN THIS VERSION (December 28, 2024 - Version 4.5):
-# - CHANGED: Minimum argument length now 50 words (was 100)
-# - Allows for more concise arguments and faster debates
-# - Range now: 50-500 words per turn (step: 50)
-# - All other functionality preserved
+# CHANGES IN THIS VERSION (January 10, 2026 - Version 5.0):
+# - ADDED: TruthLens ecosystem navigation at top of page
+# - Links to all TruthLens tools (News, AI Council, Observatory, etc.)
+# - Styled to match TruthLens purple gradient theme
+# - Current page (AI Debates) highlighted
+# - All existing functionality preserved (DO NO HARM ✓)
 #
-# CHANGES IN VERSION 4.4 (December 24, 2024):
-# - CHANGED: Audio generation now defaults to OFF (was ON)
-# - ADDED: Warning note that audio currently only works well with 3-round debates
-# - User must explicitly enable audio if they want it
-# - Prevents unexpected character usage on ElevenLabs free tier
-# - Clear messaging about current audio limitations
+# PREVIOUS CHANGES:
+# - Version 4.5 (December 28, 2024): 50-word minimum argument length
+# - Version 4.4 (December 24, 2024): Audio defaults to OFF
+# - Version 4.3 (December 23, 2024): 3 distinct ElevenLabs voices
+# - Version 4.2 (December 23, 2024): Switched to ElevenLabs API
+# - Version 4.1 (December 23, 2024): Fixed AI21 Jamba integration
 #
-# CHANGES IN VERSION 4.3 (December 23, 2024):
-# - OPTIMIZED: Audio now uses 3 distinct ElevenLabs voices
-# - PRO Debater: Adam (deep, authoritative male)
-# - CON Debater: Rachel (clear, professional female)
-# - Judge: Antoni (warm, articulate male)
-# - REMOVED: All narration/preamble to save ~35-40% characters
-# - Direct speech only - more natural and engaging
-# - 10-round debates now fit better within free tier limits
-# - Each voice is distinct - creates natural conversation flow
+# FEATURES:
+# - Choose debate opponents from 8 AI systems
+# - Configure rounds (3-15) and word limits (50-500)
+# - Adversarial or Truth-Seeking modes
+# - Optional AI judge scoring across 6 categories
+# - Audio generation with 3 distinct voices
+# - Export in CSV, JSON, TXT, MP3 formats
+# - Integrated with TruthLens ecosystem navigation
 #
-# CHANGES IN VERSION 4.2 (December 23, 2024):
-# - SWITCHED: Audio now uses ElevenLabs instead of Google Cloud TTS
-# - ElevenLabs uses simple API key (no service account needed!)
-# - Higher quality voices with natural prosody
-# - Free tier: 10,000 characters/month
-# - FIXED: Audio now generates automatically (no button click needed)
-# - Removed "Generate Audio" button that caused page reset
-# - Smoother user experience - just click download when ready
-#
-# CHANGES IN VERSION 4.1 (December 23, 2024):
-# - FIXED: AI21 now uses Python SDK instead of REST API
-# - FIXED: Correct model name is "jamba-mini" not "jamba-1.5-mini"
-# - All 8 AI systems now functional
-#
-# PREVIOUS FEATURES (Preserved):
-# 1. Choose debate opponents from 8 AI systems
-# 2. Configure rounds (3-15)
-# 3. Set word count limit (100-500)
-# 4. Enter debate topic
-# 5. Choose mode: Adversarial or Truth-Seeking
-# 6. Export debate transcripts in multiple formats
-# 7. View debate summary with agreements/disagreements
-# 8. Judge AI scoring across 6 categories
-# 9. Audio generation with 3 distinct voices (currently optimized for 3 rounds)
-#
-# NOTES:
-# - All features working as requested
-# - Audio generates automatically when enabled
-# - ElevenLabs free tier: 10,000 characters/month
-# - Audio currently works best with 3-round debates
-# - 3 professional voices create natural debate flow
-# - AI21 requires Python SDK (not REST API) as of December 2024
-# - No harm done to existing functionality
+# I did no harm and this file is not truncated
 
 import streamlit as st
 from debate_engine import DebateEngine
@@ -72,7 +40,66 @@ from datetime import datetime
 load_dotenv()
 
 # Page config
-st.set_page_config(page_title="AI Debate Arena", page_icon="⚔️", layout="wide")
+st.set_page_config(page_title="AI Debate Arena - TruthLens", page_icon="⚔️", layout="wide")
+
+# ============================================================================
+# TRUTHLENS NAVIGATION BAR
+# ============================================================================
+def render_truthlens_nav():
+    """Render TruthLens ecosystem navigation"""
+    st.markdown("""
+    <style>
+    .truthlens-nav {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .truthlens-nav a {
+        color: white;
+        text-decoration: none;
+        padding: 8px 15px;
+        margin: 0 5px;
+        border-radius: 6px;
+        transition: all 0.3s;
+        display: inline-block;
+        font-size: 0.9rem;
+    }
+    .truthlens-nav a:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateY(-2px);
+    }
+    .truthlens-nav .current {
+        background: rgba(255,255,255,0.25);
+        font-weight: 600;
+        border: 2px solid white;
+    }
+    @media (max-width: 768px) {
+        .truthlens-nav {
+            padding: 10px;
+        }
+        .truthlens-nav a {
+            display: block;
+            margin: 5px 0;
+            text-align: center;
+        }
+    }
+    </style>
+    <div class="truthlens-nav">
+        <a href="https://factsandfakes.ai">🏠 Home</a>
+        <a href="https://factsandfakes.ai/analyze">📰 News</a>
+        <a href="https://factsandfakes.ai/transcript">📄 Transcripts</a>
+        <a href="https://factsandfakes.ai/ask-ai">🧠 AI Council</a>
+        <a href="https://ai-bias-research.onrender.com/observatory">🛰️ Observatory</a>
+        <a href="https://ai-bias-research.onrender.com">🔬 AI Research</a>
+        <a href="https://factsandfakes.ai/quiz">🎯 Quiz</a>
+        <span class="current">⚔️ AI Debates</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Render navigation
+render_truthlens_nav()
 
 # Title
 st.title("⚔️ AI Debate Arena")
@@ -563,6 +590,7 @@ else:
     ✅ Export debates in multiple formats (CSV, JSON, TXT, MP3)  
     ✅ Automatic summary of main points, agreements, and disagreements  
     ✅ Error handling with fallback messages  
+    ✅ **Integrated with TruthLens ecosystem navigation**  
     """)
 
 # I did no harm and this file is not truncated
